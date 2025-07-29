@@ -1,14 +1,114 @@
 <script setup>
+import {
+  showErrorMessage,
+  successMessage,
+} from "~/utils/toast-notification.js";
 definePageMeta({
   layout: "auth",
 });
+
+const registerInput = ref({
+  name: "",
+  email: "",
+  password: "",
+});
+
+const loading = ref(false); // disable laoding after sending request
+const config = useRuntimeConfig();
+
+async function createUser() {
+  try {
+    loading.value = true;
+    const res = await $fetch(config.public?.API_BASE_URL + "/register", {
+      headers: {
+        Accept: "application/json",
+        "content-type": "application/json",
+      },
+
+      method: "POST",
+      body: JSON.stringify(registerInput.value),
+    });
+    loading.value = false;
+
+    successMessage(res?.message);
+
+    console.log(res, "res :");
+  } catch (error) {
+    loading.value = false;
+    const status = error?.response?.status;
+    const data = error?.response?._data;
+    if (status === 422) {
+      // Laravel-style validation error
+      if (data?.errors) {
+        for (const field in data.errors) {
+          const messages = data.errors[field];
+          messages.forEach((msg) => showErrorMessage(msg));
+        }
+      } else if (typeof data === "object") {
+        for (const key in data) {
+          showErrorMessage(
+            typeof data[key] === "string"
+              ? data[key]
+              : JSON.stringify(data[key])
+          );
+        }
+      } else {
+        showErrorMessage("Validation failed.");
+      }
+    } else {
+      showErrorMessage("Something went wrong.");
+    }
+  }
+}
 </script>
 
 <template>
-  <div>
-    <h1>Register</h1>
-    <h3>Enter Name:</h3>
-    <h3>Enter email:</h3>
-    <NuxtLink to="/auth/Login"><button>Register</button></NuxtLink>
+  <div class="bg-slate-100 h-screen">
+    <div class="flex justify-between">
+      <div></div>
+      <div class="w-[300px] mt-20">
+        <div class="flex flex-col gap-2">
+          <h1 class="text-2xl">Register</h1>
+          <input
+            v-model="registerInput.name"
+            type="text"
+            name=""
+            placeholder="Name"
+            id=""
+            class="py-2 px-2 text-sm rounded-md shadow-sm focus:ring focus:ring-blue-300"
+          />
+          <input
+            v-model="registerInput.email"
+            type="text"
+            name=""
+            placeholder="E-mail"
+            id=""
+            class="py-2 px-2 text-sm rounded-md shadow-sm focus:ring focus:ring-blue-300"
+          />
+          <input
+            v-model="registerInput.password"
+            type="password"
+            name=""
+            placeholder="Password"
+            id=""
+            class="py-2 px-2 text-sm rounded-md shadow-sm focus:ring focus:ring-blue-300"
+          />
+          <NuxtLink
+            to="/auth/login"
+            class="rounded-md text-indigo-500 text-sm font-semibold"
+          >
+            Login
+          </NuxtLink>
+          <button
+            @click="createUser"
+            :disabled="loading"
+            class="rounded-md text-white px-4 py-2 bg-indigo-500 text-sm font-semibold"
+          >
+            {{ loading ? "Creating..." : "Create account" }}
+          </button>
+        </div>
+      </div>
+      <div></div>
+    </div>
   </div>
 </template>
